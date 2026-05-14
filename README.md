@@ -15,6 +15,7 @@
 - [本地快速启动指南](#本地快速启动指南)
 - [环境变量配置](#环境变量配置)
 - [测试](#测试)
+- [生产环境部署](#生产环境部署)
 - [API 接口](#api-接口)
 
 ---
@@ -302,8 +303,8 @@ ai-proofreader-v2/
 |------|----------|----------|
 | JDK | 17+ | `java -version` |
 | Maven | 3.8+ | `mvn -version` |
-| Node.js | 16+ | `node -v` |
-| npm | 8+ | `npm -v` |
+| Node.js | 18+ | `node -v` |
+| npm | 9+ | `npm -v` |
 
 ### 第一步：配置环境变量
 
@@ -366,16 +367,18 @@ npm run serve
 | `OPENAI_BASE_URL` | 否 | `https://api.deepseek.com/v1` | OpenAI-compatible API 地址 |
 | `OPENAI_MODEL` | 否 | `deepseek-v4-pro` | 模型名称 |
 | `API_KEY` | 否 | (空) | 接口鉴权密钥，留空则跳过认证 |
-| `CORS_ORIGINS` | 否 | `http://localhost:8080,8081,8082,3000` | CORS 允许来源（逗号分隔） |
+| `CORS_ORIGINS` | 否 | `http://localhost:8080,8081,8082,3000,https://proofreader-web.zeabur.app` | CORS 允许来源（逗号分隔），生产环境须包含前端域名 |
 | `RATE_LIMIT_TRUST_PROXY` | 否 | `false` | 是否信任代理头（生产环境反向代理后设为 true） |
 
 ### 前端 (`frontend/.env`)
 
 | 变量名 | 必填 | 默认值 | 说明 |
 |--------|------|--------|------|
-| `VUE_APP_API_BASE` | 否 | (空，走代理) | 后端 API 基础地址 |
+| `VUE_APP_API_BASE` | 生产环境必填 | (空，走代理) | 后端 API 基础地址。本地开发留空（走 webpack 代理）；**生产部署时必须设为后端域名**，如 `https://ai-proofreader-v2.zeabur.app` |
+| `VUE_APP_SSE_BASE` | 否 | 自动回退到 `VUE_APP_API_BASE`，再回退到 `http://localhost:8080` | SSE 直连地址（绕过代理缓冲）。生产环境通常无需设置，会自动继承 `VUE_APP_API_BASE` |
 | `VUE_APP_API_KEY` | 否 | (空) | 接口鉴权密钥（需与后端一致） |
-| `VUE_APP_SSE_BASE` | 否 | `http://localhost:8080` | SSE 直连地址（绕过代理缓冲） |
+
+> **生产部署关键：** 前端构建时必须设置 `VUE_APP_API_BASE` 指向后端域名，否则 API 请求会发往前端自身域名导致 405 错误。在 Zeabur 等平台，需在前端服务的「环境变量」中配置。
 
 ---
 
@@ -396,6 +399,61 @@ mvn test
 | `LlmServiceTest` | 10 | HTTP 请求构建、JSON 解析、推理内容提取 |
 | `FileParseServiceTest` | 16 | 文件类型校验、Magic Byte 验证、文本解析 |
 | `StreamingResponseParserTest` | 25 | 三阶段标签解析、增量解析、异常输入处理 |
+
+---
+
+## 生产环境部署
+
+### 架构说明
+
+生产环境采用前后端分离部署：
+
+```
+浏览器
+  │
+  ├──→ 前端静态站点（proofreader-web.zeabur.app）── 返回 HTML/JS/CSS
+  │
+  └──→ 后端 API 服务（ai-proofreader-v2.zeabur.app）── API + SSE 流
+```
+
+前后端部署在不同域名（跨域），浏览器直接向后端发起请求（不走前端的反向代理）。
+
+### 前端部署
+
+1. 在 Zeabur 创建**静态站点**服务，关联 frontend 目录
+2. **构建环境变量**（在 Zeabur 服务设置中配置）：
+
+| 变量名 | 值 | 说明 |
+|--------|-----|------|
+| `VUE_APP_API_BASE` | `https://ai-proofreader-v2.zeabur.app` | **必填**，后端 API 地址 |
+
+> `VUE_APP_SSE_BASE` 无需单独设置，会自动回退到 `VUE_APP_API_BASE`。
+
+3. 构建命令：`npm install && npm run build`，输出目录：`dist`
+
+### 后端部署
+
+1. 在 Zeabur 创建**Docker**或**环境变量**服务，关联 backend 目录
+2. 环境变量配置：
+
+| 变量名 | 值 | 说明 |
+|--------|-----|------|
+| `OPENAI_API_KEY` | `sk-...` | LLM API 密钥（必填） |
+| `OPENAI_BASE_URL` | `https://api.deepseek.com/v1` | API 地址 |
+| `OPENAI_MODEL` | `deepseek-v4-pro` | 模型名称 |
+| `CORS_ORIGINS` | `https://proofreader-web.zeabur.app` | CORS 允许来源（必须包含前端域名） |
+| `API_KEY` | (可选) | 接口鉴权密钥 |
+| `RATE_LIMIT_TRUST_PROXY` | `true` | Zeabur 使用反向代理，需信任代理头 |
+
+### 常见问题
+
+**405 Method Not Allowed**
+
+前端请求返回 405，通常是因为 `VUE_APP_API_BASE` 未设置或设置错误，导致请求发到了前端自身的静态站点域名。确认前端构建时已设置 `VUE_APP_API_BASE=https://ai-proofreader-v2.zeabur.app`。
+
+**CORS 错误**
+
+后端返回 CORS 错误，检查 `CORS_ORIGINS` 是否包含前端域名 `https://proofreader-web.zeabur.app`。
 
 ---
 

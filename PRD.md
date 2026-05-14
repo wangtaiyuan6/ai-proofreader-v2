@@ -15,6 +15,7 @@
 | 版本 | 日期 | 修订人 | 修订内容 |
 |------|------|--------|----------|
 | V1.0 | 2026-05-14 | — | 初始版本，基于已完成的系统实现反向梳理需求 |
+| V1.1 | 2026-05-14 | — | 补充生产环境部署指南、CORS 动态配置、前端构建版本约束 |
 
 ---
 
@@ -442,6 +443,14 @@ interface Change {
 | NFR-31 | 关键安全组件（InputSanitizer / RateLimitInterceptor）必须有对应的单元测试 |
 | NFR-32 | 日志输出到文件（logs/ai-proofreader.log），保留 30 天 |
 
+### 4.5 构建与版本需求
+
+| 编号 | 要求 |
+|------|------|
+| NFR-40 | 前端构建环境要求 Node.js ≥ 18.0.0，npm ≥ 9.0.0（`package.json` engines 字段约束） |
+| NFR-41 | 前端构建时必须通过 `VUE_APP_API_BASE` 指定后端 API 地址，确保生产环境跨域请求正确路由 |
+| NFR-42 | 前后端分离部署时，后端 `CORS_ORIGINS` 必须包含前端站点域名 |
+
 ---
 
 ## 5. 接口需求
@@ -712,8 +721,10 @@ file: <二进制文件>
 |------|------|
 | SEC-60 | 允许来源通过环境变量 `CORS_ORIGINS` 配置，默认为本地开发地址 |
 | SEC-61 | 允许的请求头限制为：Content-Type、X-API-Key、Authorization、Accept |
-| SEC-62 | 允许的 HTTP 方法：GET、POST、OPTIONS |
+| SEC-62 | 允许的 HTTP 方法：GET、POST、PUT、DELETE、OPTIONS |
 | SEC-63 | 允许携带凭证（credentials = true） |
+| SEC-64 | 生产环境下，`CORS_ORIGINS` 必须显式包含前端站点域名，否则跨域请求将被浏览器拦截 |
+| SEC-65 | CORS 配置通过环境变量动态注入（`cors.allowed-origins`），无需重新编译即可调整 |
 
 ### 7.8 配置安全
 
@@ -732,7 +743,7 @@ file: <二进制文件>
 | 组件 | 要求 |
 |------|------|
 | JDK | 17+ |
-| Node.js | 16+ |
+| Node.js | 18+ |
 | Maven | 3.8+ |
 | 操作系统 | Linux / macOS / Windows |
 
@@ -749,7 +760,48 @@ file: <二进制文件>
 | 后端（Spring Boot） | 8080 | 是（`server.port`） |
 | 前端（Vue Dev Server） | 8081 | 是（`vue.config.js`） |
 
-### 8.4 日志运维
+### 8.4 生产环境部署
+
+#### 8.4.1 部署架构
+
+前后端分离部署，各自独立域名：
+
+- 前端：静态站点（如 `proofreader-web.zeabur.app`）
+- 后端：API 服务（如 `ai-proofreader-v2.zeabur.app`）
+
+浏览器直接向后端域名发起 API 请求（SSE 流式传输需直连后端，不能经过前端反向代理缓冲）。
+
+#### 8.4.2 前端构建环境变量
+
+| 变量名 | 是否必填 | 说明 |
+|--------|----------|------|
+| `VUE_APP_API_BASE` | **生产环境必填** | 后端 API 地址，如 `https://ai-proofreader-v2.zeabur.app`。未设置时请求会发往前端自身域名，导致 405 错误 |
+| `VUE_APP_SSE_BASE` | 否 | SSE 直连地址，自动回退到 `VUE_APP_API_BASE`。生产环境通常无需单独设置 |
+| `VUE_APP_API_KEY` | 否 | 接口鉴权密钥，需与后端一致 |
+
+#### 8.4.3 后端生产环境变量
+
+| 变量名 | 说明 |
+|--------|------|
+| `CORS_ORIGINS` | 必须包含前端站点域名，否则跨域请求被拦截 |
+| `RATE_LIMIT_TRUST_PROXY` | 反向代理后应设为 `true`，否则基于 `remoteAddr` 的限流取到的是代理 IP |
+
+#### 8.4.4 前端构建版本要求
+
+`package.json` 中 `engines` 字段声明了构建环境最低版本要求：
+
+```json
+{
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
+```
+
+此约束确保 Vue CLI 5.x + Tailwind CSS 3.x 正常工作。低于此版本可能导致构建失败或产物异常。
+
+### 8.5 日志运维
 
 | 配置项 | 值 |
 |--------|-----|
@@ -761,7 +813,7 @@ file: <二进制文件>
 | Spring Web 日志级别 | WARN |
 | Catalina 日志级别 | WARN |
 
-### 8.5 健康检查
+### 8.6 健康检查
 
 系统启动后可通过以下方式验证服务状态：
 
