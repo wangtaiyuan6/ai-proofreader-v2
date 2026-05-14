@@ -1,0 +1,10 @@
+spring:
+  main:
+    allow-bean-definition-overriding: true
+
+app:
+  api-key: ""
+  openai:
+    api-key: sk-test-fake-key
+    base-url: http://localhost:${mock.server.port:10080}/v1
+    model: deepseek-test

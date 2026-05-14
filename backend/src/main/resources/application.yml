@@ -1,0 +1,29 @@
+server:
+  port: 8080
+  tomcat:
+    threads:
+      max: 50
+      min-spare: 5
+    max-connections: 200
+    connection-timeout: 10s
+    max-http-form-post-size: 2MB
+    max-swallow-size: 2MB
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+# Application configuration
+app:
+  # API Key for endpoint authentication (leave empty to disable auth in dev)
+  api-key: ${API_KEY:}
+  openai:
+    api-key: ${OPENAI_API_KEY}
+    base-url: ${OPENAI_BASE_URL:https://api.deepseek.com/v1}
+    model: ${OPENAI_MODEL:deepseek-v4-pro}
+
+# CORS configuration
+cors:
+  allowed-origins: ${CORS_ORIGINS:http://localhost:8080,http://localhost:8081,http://localhost:8082,http://localhost:3000}

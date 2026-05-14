@@ -1,0 +1,33 @@
+{
+  "name": "ai-proofreader-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "core-js": "^3.37.0",
+    "diff": "^7.0.0",
+    "vue": "^2.7.16"
+  },
+  "devDependencies": {
+    "@babel/eslint-parser": "^7.28.6",
+    "@vue/cli-plugin-babel": "~5.0.8",
+    "@vue/cli-plugin-eslint": "~5.0.8",
+    "@vue/cli-service": "~5.0.8",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-plugin-vue": "^10.9.1",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "vue-template-compiler": "^2.7.16"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
