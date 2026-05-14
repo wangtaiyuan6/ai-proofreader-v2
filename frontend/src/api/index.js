@@ -2,8 +2,9 @@ import axios from 'axios'
 
 const API_BASE = process.env.VUE_APP_API_BASE || ''
 const API_KEY = process.env.VUE_APP_API_KEY || ''
-// SSE 请求直连后端，避免代理缓冲导致流式传输失效
-const SSE_BASE = process.env.VUE_APP_SSE_BASE || 'http://localhost:8080'
+// SSE/API 请求直连后端，避免代理缓冲导致流式传输失效
+// 开发环境默认 localhost:8080，生产环境必须通过 VUE_APP_API_BASE 指定后端域名
+const SSE_BASE = process.env.VUE_APP_SSE_BASE || process.env.VUE_APP_API_BASE || 'http://localhost:8080'
 
 const client = axios.create({
   baseURL: API_BASE,
