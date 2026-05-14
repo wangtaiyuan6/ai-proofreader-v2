@@ -6,8 +6,8 @@ server:
       min-spare: 5
     max-connections: 200
     connection-timeout: 10s
-    max-http-form-post-size: 2MB
-    max-swallow-size: 2MB
+    max-http-form-post-size: 20MB
+    max-swallow-size: 20MB
 
 spring:
   servlet:
