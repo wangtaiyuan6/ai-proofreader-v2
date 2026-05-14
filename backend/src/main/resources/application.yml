@@ -26,4 +26,4 @@ app:
 
 # CORS configuration
 cors:
-  allowed-origins: ${CORS_ORIGINS:http://localhost:8080,http://localhost:8081,http://localhost:8082,http://localhost:3000}
+  allowed-origins: ${CORS_ORIGINS:http://localhost:8080,http://localhost:8081,http://localhost:8082,http://localhost:3000,https://proofreader-web.zeabur.app}
